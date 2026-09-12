@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dam Break Inundation Model — SIH Prototype</title>
+<style>
+  :root{
+    --deep: #061b22;
+    --deep2: #0c2b35;
+    --water: #3fa9c9;
+    --water-dim: #1e5c70;
+    --amber: #e0a24b;
+    --danger: #d0603f;
+    --safe: #5fae7a;
+    --paper: #eef3f2;
+    --line: rgba(238,243,242,0.14);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 20% 10%, rgba(63,169,201,0.10), transparent 45%),
+      repeating-linear-gradient(0deg, transparent, transparent 34px, var(--line) 35px),
+      repeating-linear-gradient(90deg, transparent, transparent 34px, var(--line) 35px),
+      var(--deep);
+    color:var(--paper);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    padding: 28px 16px 60px;
+  }
+  .wrap{max-width:640px; margin:0 auto;}
+  .eyebrow{
+    font-size:12.5px; letter-spacing:0.02em; color:var(--water);
+    margin:0 0 6px;
+  }
+  h1{
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 30px;
+    line-height:1.15;
+    margin:0 0 6px;
+    color:var(--paper);
+    font-weight:600;
+  }
+  .sub{
+    color:#a9c2c2; font-size:14.5px; max-width:52ch; margin:0 0 26px; line-height:1.5;
+  }
+  .panel{
+    background:var(--deep2);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:20px;
+    margin-bottom:18px;
+  }
+  .row{display:flex; gap:10px;}
+  input[type=text]{
+    flex:1;
+    background:var(--deep);
+    border:1px solid var(--line);
+    color:var(--paper);
+    padding:13px 14px;
+    border-radius:3px;
+    font-size:15px;
+    outline:none;
+  }
+  input[type=text]:focus{border-color:var(--water);}
+  button{
+    background:var(--water);
+    color:var(--deep);
+    border:none;
+    padding:13px 20px;
+    border-radius:3px;
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  button:hover{background:#5fc2df;}
+  .hint{font-size:12.5px; color:#7b9797; margin-top:10px;}
+  .hint b{color:#a9c2c2;}
+
+  .gaugewrap{display:flex; align-items:center; gap:20px; margin-top:6px;}
+  .readout{flex:1;}
+  .level-num{font-size:38px; font-weight:700; line-height:1;}
+  .level-lbl{font-size:13px; color:#a9c2c2; margin-top:4px;}
+  .status-pill{
+    display:inline-block; padding:4px 11px; border-radius:20px;
+    font-size:12.5px; font-weight:600; margin-top:10px;
+  }
+  .status-safe{background:rgba(95,174,122,0.18); color:var(--safe);}
+  .status-watch{background:rgba(224,162,75,0.18); color:var(--amber);}
+  .status-critical{background:rgba(208,96,63,0.2); color:var(--danger);}
+
+  .section-title{
+    font-size:12.5px; color:var(--water); margin:26px 0 10px; letter-spacing:0.01em;
+  }
+  table{width:100%; border-collapse:collapse; font-size:14px;}
+  th{
+    text-align:left; font-weight:600; color:#a9c2c2; font-size:12px;
+    padding:0 10px 8px 0; border-bottom:1px solid var(--line);
+  }
+  td{padding:11px 10px 11px 0; border-bottom:1px solid var(--line); vertical-align:top;}
+  tr:last-child td{border-bottom:none;}
+  .place-name{font-weight:600; color:var(--paper);}
+  .place-dist{font-size:12px; color:#7b9797;}
+  .depth-tag{
+    display:inline-block; padding:2px 8px; border-radius:3px; font-size:12px; font-weight:600;
+  }
+  .depth-severe{background:rgba(208,96,63,0.2); color:var(--danger);}
+  .depth-mod{background:rgba(224,162,75,0.18); color:var(--amber);}
+  .depth-low{background:rgba(95,174,122,0.18); color:var(--safe);}
+
+  .disclaimer{
+    border-left:3px solid var(--amber);
+    padding:12px 14px;
+    background:rgba(224,162,75,0.07);
+    font-size:12.5px;
+    color:#c9b98f;
+    line-height:1.55;
+    margin-top:22px;
+    border-radius:0 3px 3px 0;
+  }
+  .empty{color:#7b9797; font-size:14px; padding:6px 0;}
+  .found-name{font-family:Georgia, serif; font-size:20px; margin:0 0 2px;}
+  .found-meta{font-size:12.5px; color:#7b9797; margin:0 0 18px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">SMART INDIA HACKATHON — PROTOTYPE</p>
+  <h1>Dam Break Inundation Model</h1>
+  <p class="sub">Enter a dam name to see its current reservoir status and a simulated downstream flood-spread estimate.</p>
+
+  <div class="panel">
+    <div class="row">
+      <input type="text" id="damInput" placeholder="e.g. Mettur Dam, Vaigai Dam, Mullaperiyar" />
+      <button onclick="analyze()">Analyze</button>
+    </div>
+    <p class="hint">Try: <b>Mettur</b>, <b>Vaigai</b>, <b>Mullaperiyar</b>, <b>Bhavanisagar</b>, <b>Krishnagiri</b>, <b>Stanley Reservoir</b></p>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="disclaimer">
+    <b>Demo data notice:</b> This prototype uses illustrative reservoir figures and a simplified distance-decay model to estimate flood spread — it is built to demonstrate the workflow for the hackathon, not for real flood warning. A production version needs live telemetry (CWC/PWD gauge feeds) and real breach-flow simulation (HEC-RAS or similar) run against terrain elevation (DEM) data.
+  </div>
+</div>
+
+<script>
+const dams = {
+  "mettur": {
+    name: "Mettur Dam (Stanley Reservoir)", river: "Kaveri", district: "Salem, Tamil Nadu",
+    frl: 120.0, current: 97.4, capacity_tmc: 93.4,
+    downstream: [
+      {place:"Mettur Town", dist:2, },
+      {place:"Salem", dist:45},
+      {place:"Erode", dist:75},
+      {place:"Bhavani", dist:95},
+      {place:"Karur", dist:140},
+      {place:"Tiruchirappalli", dist:180}
+    ]
+  },
+  "stanley reservoir": { alias: "mettur" },
+  "vaigai": {
+    name: "Vaigai Dam", river: "Vaigai", district: "Theni, Tamil Nadu",
+    frl: 71.0, current: 66.2, capacity_tmc: 7.1,
+    downstream: [
+      {place:"Andipatti", dist:18},
+      {place:"Usilampatti", dist:32},
+      {place:"Madurai City", dist:58},
+      {place:"Sivaganga", dist:90}
+    ]
+  },
+  "mullaperiyar": {
+    name: "Mullaperiyar Dam", river: "Periyar", district: "Idukki, Kerala / Theni, Tamil Nadu border",
+    frl: 152.0, current: 140.5, capacity_tmc: 15.7,
+    downstream: [
+      {place:"Vandiperiyar", dist:15},
+      {place:"Kumily", dist:9},
+      {place:"Thekkady", dist:12},
+      {place:"Kuttikkanam", dist:22},
+      {place:"Idukki Town (Periyar valley)", dist:60}
+    ]
+  },
+  "bhavanisagar": {
+    name: "Bhavanisagar Dam", river: "Bhavani", district: "Erode, Tamil Nadu",
+    frl: 105.0, current: 88.9, capacity_tmc: 32.8,
+    downstream: [
+      {place:"Bhavani Town", dist:8},
+      {place:"Sathyamangalam", dist:20},
+      {place:"Erode City", dist:35},
+      {place:"Kodumudi", dist:55}
+    ]
+  },
+  "krishnagiri": {
+    name: "Krishnagiri Dam", river: "Thenpennai (South Pennar)", district: "Krishnagiri, Tamil Nadu",
+    frl: 704.0, current: 690.1, capacity_tmc: 1.86,
+    downstream: [
+      {place:"Krishnagiri Town", dist:6},
+      {place:"Rayakottai", dist:22},
+      {place:"Hosur", dist:38}
+    ]
+  }
+};
+
+function resolveDam(key){
+  let d = dams[key];
+  if(d && d.alias) d = dams[d.alias];
+  return d;
+}
+
+function analyze(){
+  const raw = document.getElementById('damInput').value.trim().toLowerCase();
+  const results = document.getElementById('results');
+  if(!raw){ results.innerHTML = '<div class="panel"><p class="empty">Type a dam name to begin.</p></div>'; return; }
+
+  let matchKey = Object.keys(dams).find(k => raw.includes(k) || k.includes(raw));
+  const dam = matchKey ? resolveDam(matchKey) : null;
+
+  if(!dam){
+    results.innerHTML = `<div class="panel"><p class="empty">No demo record for "<b>${escapeHtml(raw)}</b>" yet. This prototype currently ships sample data for a handful of Tamil Nadu / Kerala dams — try one from the list above, or wire in a live CWC/PWD feed for full coverage.</p></div>`;
+    return;
+  }
+
+  const pct = dam.current / dam.frl;
+  let status, statusClass;
+  if(pct < 0.75){ status='Normal'; statusClass='status-safe'; }
+  else if(pct < 0.92){ status='Watch'; statusClass='status-watch'; }
+  else { status='Critical — near FRL'; statusClass='status-critical'; }
+
+  // simplified inundation simulation: excess storage above 75% FRL drives a
+  // notional flood "energy" that decays with downstream distance
+  const excess = Math.max(0, dam.current - dam.frl*0.75);
+  const energy = excess * dam.capacity_tmc; // arbitrary demo unit
+
+  const rows = dam.downstream.map(p => {
+    const decay = energy / (1 + p.dist/25);
+    let depthTag, depthClass, depthLabel;
+    if(decay > 40){ depthClass='depth-severe'; depthLabel='Severe'; }
+    else if(decay > 15){ depthClass='depth-mod'; depthLabel='Moderate'; }
+    else { depthClass='depth-low'; depthLabel='Low'; }
+    const hours = (p.dist / 18 + 0.4).toFixed(1); // rough notional wave-travel speed
+    return `<tr>
+      <td>
+        <div class="place-name">${p.place}</div>
+        <div class="place-dist">${p.dist} km downstream · est. arrival ~${hours} hrs</div>
+      </td>
+      <td><span class="depth-tag ${depthClass}">${depthLabel}</span></td>
+    </tr>`;
+  }).join('');
+
+  results.innerHTML = `
+    <div class="panel">
+      <p class="found-name">${dam.name}</p>
+      <p class="found-meta">${dam.river} river · ${dam.district}</p>
+      <div class="gaugewrap">
+        <div class="readout">
+          <div class="level-num">${dam.current} m</div>
+          <div class="level-lbl">Current level · FRL ${dam.frl} m (${(pct*100).toFixed(1)}% full)</div>
+          <span class="status-pill ${statusClass}">${status}</span>
+        </div>
+      </div>
+      <p class="section-title">SIMULATED BREACH SPREAD — DOWNSTREAM PLACES</p>
+      <table>
+        <tr><th>Place / distance</th><th>Notional flood severity</th></tr>
+        ${rows}
+      </table>
+    </div>
+  `;
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+document.getElementById('damInput').addEventListener('keydown', e => { if(e.key==='Enter') analyze(); });
+</script>
+</body>
+</html>
